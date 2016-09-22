@@ -1,0 +1,90 @@
+---
+title: "Motor Trend Magazine - MPG"
+author: "Allan Perk"
+date: "21 September 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Executive Summary
+
+This article's main point is to analyze fuel consumption in miles per gallon (MPG) based on trasnmission type, along with other potential impactors. 
+To perform the anlaysis, we first conduct an exploratory data analysis, after which we investigat and perform the best regression. To assess the best choice, we use the *leaps* package to assess explanotory power and attempt to be parsimonious. We conclude by testing the data for normality using a *t.test* and *qqplot*.
+
+## Data
+The data used is the *mtcars* dataset available in R, which was extracted by the 1974 Motor Trend Magazine, which presents fuel consumption and 10 other aspects of automobile design and performance for a total of 32 automobiles. 
+
+A data frame with 32 observations on 11 variables.
+
+[, 1]	 mpg	 Miles/(US) gallon
+[, 2]	 cyl	 Number of cylinders
+[, 3]	 disp	 Displacement (cu.in.)
+[, 4]	 hp	 Gross horsepower
+[, 5]	 drat	 Rear axle ratio
+[, 6]	 wt	 Weight (1000 lbs)
+[, 7]	 qsec	 1/4 mile time
+[, 8]	 vs	 V/S
+[, 9]	 am	 Transmission (0 = automatic, 1 = manual)
+[,10]	 gear	 Number of forward gears
+[,11]	 carb	 Number of carburetors
+
+```{r data, echo = FALSE, warning = FALSE}
+library(pacman)
+p_load(ggplot2, GGally, gridExtra, leaps, corrplot, pastecs, knitr)
+data(mtcars)
+str(mtcars)
+head(mtcars)
+```
+
+## Exploratory Analysis
+
+Using the pastecs package for descriptive statistics, we can have a good idea on whether the data follows a normal distribution. With the median approximately equal to the mean, the skew.2SE less than one, and kurtosis approximately zero we can just about conclude the data follows a normal distribution. Additionally, taking the p.value of the normtest at 0.12288, we cannot reject the nul of the distribution being close to normal.
+
+
+```{r pressure, echo=FALSE, warning = FALSE}
+stat.desc(mtcars[1], basic=FALSE, norm=TRUE)
+
+c <- cor(mtcars)
+cp <- corrplot(c, type="lower", diag = TRUE)
+
+grid.arrange(st, cp, nrow = 1, ncol = 2)
+
+g = ggplot(mtcars, aes(mpg))
+h = g+ geom_histogram(aes(y=..density..),fill = "light blue", stat = "bin", binwidth= 2) + geom_density() 
+fg = h + facet_wrap(~am)
+
+grid.arrange(h, fg, nrow = 2, ncol = 1)           
+b = ggplot(mtcars, aes(y=mpg, x=am)) + geom_boxplot()
+```
+
+## Regression Analysis
+
+```{r, echo = FALSE}
+#Test for normality
+t.test(mtcars$mpg)
+t.test(mpg~am, mtcars)
+
+           
+#Regression Models
+fitaut <- lm(mpg~am, mtcars)
+fitall <- lm(mpg~., mtcars)
+lower = fitaut
+upper = fitall
+fitstp <- step(fitaut, scope = list(lower=lower, upper=upper), direction = "forward")  
+
+#Alternative using leaps
+leaps = regsubsets(mpg~., mtcars)
+plot(leaps, scale="adjr2")
+#Residual Analysis
+par(mfrow=c(2,2))
+
+
+#QQplot            
+ggplot(mtcars, aes(sample = mpg)) + 
+  stat_qq(geom = "point", aes(colour= am)) + ggtitle("QQPLOT Miles per gallon")
+
+```
